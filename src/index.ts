@@ -215,6 +215,7 @@ client.on("interactionCreate", async (interaction) => {
                 PermissionFlagsBits.CreatePublicThreads,
                 PermissionFlagsBits.CreatePrivateThreads,
                 PermissionFlagsBits.SendMessagesInThreads,
+                PermissionFlagsBits.SendMessages,
               ],
             },
             {
@@ -957,23 +958,26 @@ client.on("interactionCreate", async (interaction) => {
       if (!subject)
         return errorMessage(interaction, "Cette discipline est introuvable !");
 
-      await db.subject.delete({
-        where: {
-          id: subject?.id,
-        },
-      });
-
       const candidatureChannel = await interaction.guild.channels.fetch(
         subject.guild.canditatureChannelId
       );
+
+      console.log(candidatureChannel?.name);
 
       if (
         candidatureChannel &&
         candidatureChannel.type === ChannelType.GuildForum
       ) {
-        const candidatureMsg = await candidatureChannel.messages.fetch(
+        console.log(
+          candidatureChannel.lastMessageId,
           subject.candidatureMessageId
         );
+
+        const candidatureMsg = await candidatureChannel?.messages?.fetch(
+          subject.candidatureMessageId
+        );
+
+        console.log(candidatureMsg?.id);
 
         if (candidatureMsg) {
           candidatureMsg.thread
@@ -1010,6 +1014,12 @@ client.on("interactionCreate", async (interaction) => {
           .delete()
           .catch((e) => console.log("Cant delete channel"));
       }
+
+      await db.subject.delete({
+        where: {
+          id: subject?.id,
+        },
+      });
 
       return interaction.reply({
         embeds: [
