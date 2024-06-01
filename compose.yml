@@ -2,7 +2,7 @@ services:
   bot:
     image: institute-bot:latest
     restart: always
-    envrionment:
+    environment:
       - DISCORD_TOKEN=
       - DISCORD_CLIENT_ID=
       - DATABASE_URL=
