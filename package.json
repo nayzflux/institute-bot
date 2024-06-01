@@ -1,0 +1,19 @@
+{
+  "name": "institute-bot",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "prisma": "^5.14.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@prisma/client": "5.14.0",
+    "@t3-oss/env-core": "^0.10.1",
+    "discord.js": "^14.15.2",
+    "lucia": "^3.2.0",
+    "zod": "^3.23.8"
+  }
+}

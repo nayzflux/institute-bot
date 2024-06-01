@@ -1,0 +1,74 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Guild {
+  id String @id @map("_id")
+
+  canditatureChannelId String @map("canditatureChannelId") @default("")
+
+  teacherRoleId String @map("teacherRoleId") @default("")
+  directorRoleId String @map("directorRoleId") @default("")
+  // helperRoleId String @map("helperRoleId") @default("")
+
+  // ticketProfId String @map("ticketProfId") @default("")
+  // ticketSupportId String @map("ticketSupportId") @default("")
+
+  subjects Subject[]
+}
+
+model Subject {
+  id String @id @map("_id")
+
+  teacherRoleId        String @map("teacherRoleId")
+  sudentRoleId         String @map("sudentRoleId")
+  candidatureMessageId String @map("candidatureMessageId")
+  categoryChannelId    String @map("categoryChannelId")
+
+  guild   Guild  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  guildId String @map("guildId")
+
+  candidatures Candidature[]
+}
+
+model Candidature {
+  id        String   @id @map("_id")
+
+  applierUserId String @map("applierUserId")
+  controlMessageId String @map("controlMessageId")
+  status CandidatureStatus @map("status")
+
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectId String @map("subjectId")
+}
+
+// enum TicketStatus {
+//   OPEN
+//   CLOSED
+//   DELETED
+// }
+
+// model Ticket {
+//   id        String   @id @map("_id")
+
+//   applierUserId String @map("applierUserId")
+//   controlMessageId String @map("controlMessageId")
+//   status TicketStatus @map("status")
+// }
+
+enum CandidatureStatus {
+  REJECTED
+  SUCCEED
+  PENDING
+}
