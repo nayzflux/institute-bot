@@ -31,6 +31,8 @@ model Guild {
 model Subject {
   id String @id @map("_id")
 
+  subjectName String @map("subjectName")
+
   teacherRoleId        String @map("teacherRoleId")
   sudentRoleId         String @map("sudentRoleId")
   candidatureMessageId String @map("candidatureMessageId")
@@ -52,20 +54,6 @@ model Candidature {
   subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   subjectId String @map("subjectId")
 }
-
-// enum TicketStatus {
-//   OPEN
-//   CLOSED
-//   DELETED
-// }
-
-// model Ticket {
-//   id        String   @id @map("_id")
-
-//   applierUserId String @map("applierUserId")
-//   controlMessageId String @map("controlMessageId")
-//   status TicketStatus @map("status")
-// }
 
 enum CandidatureStatus {
   REJECTED

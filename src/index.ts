@@ -2,11 +2,13 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  CategoryChannel,
   ChannelType,
   Client,
   Colors,
   EmbedBuilder,
   GatewayIntentBits,
+  GuildForumThreadManager,
   GuildMemberRoleManager,
   ModalBuilder,
   Partials,
@@ -15,6 +17,7 @@ import {
   Routes,
   SlashCommandBuilder,
   SlashCommandRoleOption,
+  SlashCommandStringOption,
   SlashCommandSubcommandBuilder,
   TextInputBuilder,
   TextInputStyle,
@@ -40,6 +43,16 @@ const commands = [
       new SlashCommandSubcommandBuilder()
         .setName("add")
         .setDescription("Créer une nouvelle discipline")
+    )
+    .addSubcommand(
+      new SlashCommandSubcommandBuilder()
+        .setName("remove")
+        .setDescription("Supprimer une nouvelle discipline")
+        .addStringOption(
+          new SlashCommandStringOption()
+            .setName("subject")
+            .setDescription("Le nom de la discipline que vous voulez supprimer")
+        )
     )
     .toJSON(),
   new SlashCommandBuilder()
@@ -136,7 +149,9 @@ client.on("interactionCreate", async (interaction) => {
       const rules = interaction.fields.getField("rules");
       const description = interaction.fields.getField("description");
 
-      interaction.deferReply();
+      await interaction.reply("⏳ **Merci de patienter quelques instants...**");
+
+      console.log("sbadd");
 
       // Create rôle
       try {
@@ -391,6 +406,8 @@ client.on("interactionCreate", async (interaction) => {
           ],
         });
 
+        console.log("created");
+
         // Send onboarding channel message
         pause.send({
           embeds: [
@@ -417,12 +434,16 @@ client.on("interactionCreate", async (interaction) => {
           interaction.member.roles.add(teacherRole.id);
         }
 
+        console.log("before cnf");
+
         // Poster le message de canditature
         const config = await db.guild.findFirst({
           where: {
             id: interaction.guild.id,
           },
         });
+
+        console.log("after cnf");
 
         if (!config?.canditatureChannelId) {
           return errorMessage(
@@ -448,6 +469,8 @@ client.on("interactionCreate", async (interaction) => {
             "Le salon de candidature présentant l'ensemble des disciplines n'est pas du type Forum."
           );
         }
+
+        console.log("channel");
 
         const subjectEmbed = new EmbedBuilder()
           .setAuthor({ name: `📌╎${name.value}` })
@@ -479,6 +502,7 @@ client.on("interactionCreate", async (interaction) => {
         await db.subject.create({
           data: {
             id: subjectId,
+            subjectName: name.value,
             teacherRoleId: teacherRole.id,
             sudentRoleId: studentRole.id,
             categoryChannelId: category.id,
@@ -487,7 +511,12 @@ client.on("interactionCreate", async (interaction) => {
           },
         });
 
-        interaction.reply({
+        console.log(interaction.isRepliable());
+
+        console.log("create");
+
+        return interaction.editReply({
+          content: "",
           embeds: [
             new EmbedBuilder({
               author: {
@@ -511,15 +540,21 @@ client.on("interactionCreate", async (interaction) => {
       } catch (err) {
         console.error(err);
 
-        errorMessage(
+        return errorMessage(
           interaction,
           "Impossible de créer la discipline. Vérifiez que le bot possèdes les permissions de créer des rôles et des salons."
         );
       }
+
+      return;
     }
+
+    return;
   }
 
   if (interaction.isButton()) {
+    console.log("btn");
+
     if (interaction.customId === "candidate") {
       // Créer le salon de ticket
       const subject = await db.subject.findFirst({
@@ -842,7 +877,6 @@ client.on("interactionCreate", async (interaction) => {
     if (roles instanceof Array) {
       if (roles.includes(config.teacherRoleId)) {
         isAllowed = true;
-        console.log("allowed");
       }
     }
 
@@ -896,22 +930,129 @@ client.on("interactionCreate", async (interaction) => {
 
       await interaction.showModal(modal);
     }
+
+    if (subcommand === "remove") {
+      const subjectName = interaction.options.getString("subject");
+
+      if (!subjectName)
+        return errorMessage(
+          interaction,
+          "Merci de fournir un nom de discipline !"
+        );
+
+      const subject = await db.subject.findFirst({
+        where: {
+          subjectName: subjectName,
+          guildId: interaction.guild.id,
+        },
+        include: {
+          guild: true,
+        },
+      });
+
+      if (!subject)
+        return errorMessage(interaction, "Cette discipline est introuvable !");
+
+      await db.subject.delete({
+        where: {
+          id: subject?.id,
+        },
+      });
+
+      const candidatureChannel = await interaction.guild.channels.fetch(
+        subject.guild.canditatureChannelId
+      );
+
+      if (
+        candidatureChannel &&
+        candidatureChannel.type === ChannelType.GuildForum
+      ) {
+        const candidatureMsg = await candidatureChannel.messages.fetch(
+          subject.candidatureMessageId
+        );
+
+        if (candidatureMsg) {
+          candidatureMsg.thread
+            ?.delete()
+            .catch((err) => console.log("Cant delete thread"));
+        }
+      }
+
+      const categoryChannel = await interaction.guild.channels.fetch(
+        subject.categoryChannelId
+      );
+
+      const teacherRole = await interaction.guild.roles.fetch(
+        subject.teacherRoleId
+      );
+      const studentRole = await interaction.guild.roles.fetch(
+        subject.sudentRoleId
+      );
+
+      if (teacherRole) {
+        teacherRole.delete().catch((e) => console.log("Cant delete role"));
+      }
+
+      if (studentRole) {
+        studentRole.delete().catch((e) => console.log("Cant delete role"));
+      }
+
+      if (categoryChannel instanceof CategoryChannel) {
+        categoryChannel.children.cache.forEach((child) =>
+          child.delete().catch((e) => console.log("Cant delete channel"))
+        );
+
+        categoryChannel
+          .delete()
+          .catch((e) => console.log("Cant delete channel"));
+      }
+
+      return interaction.reply({
+        embeds: [
+          new EmbedBuilder({
+            author: {
+              name: "✅ Discipline supprimé:",
+            },
+            description:
+              "La discipline " +
+              subject.subjectName +
+              " a été supprimé avec succès !",
+          }),
+        ],
+      });
+    }
   }
 });
 
 const errorMessage = (interaction: RepliableInteraction, message: string) => {
-  interaction.reply({
-    ephemeral: true,
-    embeds: [
-      new EmbedBuilder({
-        author: {
-          name: `❌ Erreur:`,
-        },
-        description: message,
-        color: Colors.Red,
-      }),
-    ],
-  });
+  console.log("err msg");
+
+  if (interaction.replied) {
+    return interaction.editReply({
+      embeds: [
+        new EmbedBuilder({
+          author: {
+            name: `❌ Erreur:`,
+          },
+          description: message,
+          color: Colors.Red,
+        }),
+      ],
+    });
+  } else {
+    return interaction.reply({
+      ephemeral: true,
+      embeds: [
+        new EmbedBuilder({
+          author: {
+            name: `❌ Erreur:`,
+          },
+          description: message,
+          color: Colors.Red,
+        }),
+      ],
+    });
+  }
 };
 
 client.login(env.DISCORD_TOKEN);
