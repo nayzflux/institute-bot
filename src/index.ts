@@ -581,6 +581,10 @@ client.on("interactionCreate", async (interaction) => {
             id: subject.teacherRoleId,
             allow: [PermissionFlagsBits.ViewChannel],
           },
+          {
+            id: subject.sudentRoleId,
+            deny: [PermissionFlagsBits.ViewChannel],
+          },
         ],
         parent: subject.categoryChannelId,
       });
@@ -600,13 +604,13 @@ client.on("interactionCreate", async (interaction) => {
           "Le rôle d'enseignant de cette discipline n'existe plus !"
         );
 
-      const teacher = teacherRole.members.first();
+      // const teacher = teacherRole.members.first();
 
-      if (!teacher)
-        return errorMessage(
-          interaction,
-          "Aucun enseignant n'est assigné à cette discipline !"
-        );
+      // if (!teacher)
+      //   return errorMessage(
+      //     interaction,
+      //     "Aucun enseignant n'est assigné à cette discipline !"
+      //   );
 
       const acceptButton = new ButtonBuilder()
         .setCustomId("candidate-accept")
