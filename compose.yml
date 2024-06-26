@@ -2,4 +2,4 @@ services:
   bot:
     image: institute-bot:latest
     restart: always
-    environment: .env
+    env_file: .env
